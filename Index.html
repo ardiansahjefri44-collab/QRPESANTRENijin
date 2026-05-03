@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Perijinan QR</title>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+
+body{
+  font-family:Arial;
+  background:#f5f5f5;
+  padding:20px;
+}
+
+.container{
+  max-width:500px;
+  margin:auto;
+  background:white;
+  padding:20px;
+  border-radius:12px;
+}
+
+button{
+  width:100%;
+  padding:15px;
+  margin-top:10px;
+  border:none;
+  border-radius:10px;
+  background:#0f766e;
+  color:white;
+  font-size:16px;
+}
+
+input, textarea{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:1px solid #ccc;
+  box-sizing:border-box;
+}
+
+.card{
+  background:#f1f5f9;
+  padding:10px;
+  margin-top:10px;
+  border-radius:10px;
+}
+
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h2>PERIJINAN SANTRI</h2>
+
+<div id="reader"></div>
+
+<input
+id="alasan"
+placeholder="Alasan">
+
+<input
+id="penjemput"
+placeholder="Penjemput">
+
+<label>Batas Kembali</label>
+
+<input
+type="datetime-local"
+id="batas_kembali">
+
+<div id="result"></div>
+
+<h3>Masih Di Luar</h3>
+<div id="di_luar"></div>
+
+<h3>Terlambat</h3>
+<div id="terlambat"></div>
+
+<h3>Sudah Kembali</h3>
+<div id="kembali"></div>
+
+</div>
+
+<script>
+
+const API_URL =
+'https://script.google.com/macros/s/AKfycbytDsZN4FC0ciJ4IkziTX7F2nSsvTQAu3N7Di0qXIZL5mkxjXbH_DgiRTRtt3Ep3zyZ/exec';
+
+let lastScan = '';
+
+function onScanSuccess(decodedText){
+
+  if(decodedText === lastScan){
+    return;
+  }
+
+  lastScan = decodedText;
+
+  submit(decodedText);
+
+  setTimeout(()=>{
+    lastScan = '';
+  },3000);
+
+}
+
+async function submit(santriId){
+
+  const payload = {
+
+    santri_id: santriId,
+
+    alasan:
+      document
+      .getElementById('alasan')
+      .value,
+
+    penjemput:
+      document
+      .getElementById('penjemput')
+      .value,
+
+    batas_kembali:
+      document
+      .getElementById('batas_kembali')
+      .value
+
+  };
+
+  const res = await fetch(API_URL,{
+    method:'POST',
+    body:JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  document
+    .getElementById('result')
+    .innerHTML = `
+      <div class="card">
+        ${data.nama}
+        <br>
+        Status:
+        ${data.action}
+      </div>
+    `;
+
+  loadDashboard();
+
+}
+
+async function loadDashboard(){
+
+  const res =
+    await fetch(API_URL);
+
+  const data =
+    await res.json();
+
+  render(
+    'di_luar',
+    data.di_luar
+  );
+
+  render(
+    'terlambat',
+    data.terlambat
+  );
+
+  render(
+    'kembali',
+    data.kembali
+  );
+
+}
+
+function render(id,items){
+
+  let html = '';
+
+  items.forEach(item=>{
+
+    html += `
+      <div class="card">
+
+      <b>${item.nama}</b>
+
+      <br>
+
+      ${item.alasan}
+
+      <br>
+
+      ${item.status}
+
+      </div>
+    `;
+
+  });
+
+  document
+    .getElementById(id)
+    .innerHTML = html;
+
+}
+
+const scanner =
+new Html5QrcodeScanner(
+  "reader",
+  {
+    fps:10,
+    qrbox:250
+  }
+);
+
+scanner.render(onScanSuccess);
+
+loadDashboard();
+
+setInterval(loadDashboard,10000);
+
+</script>
+
+</body>
+</html>
